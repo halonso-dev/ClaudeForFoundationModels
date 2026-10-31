@@ -26,6 +26,7 @@ import FoundationModels
 ///   }
 /// }
 /// ```
+@available(iOS 27.0, macOS 27.0, *)
 public struct ClaudeServerToolActivity: Sendable, Equatable, Identifiable {
   /// The API's tool-use id, shared by the call and its result.
   public let id: String
@@ -124,6 +125,7 @@ public struct ClaudeServerToolActivity: Sendable, Equatable, Identifiable {
   }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension Transcript.Response {
   /// The server-side tool round-trip `segment` holds the place of, or `nil`
   /// for an ordinary segment.
@@ -147,6 +149,7 @@ extension Transcript.Response {
   }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension Transcript {
   /// Every server-tool round-trip in the conversation, in order, with each
   /// result paired to its call wherever the two arrived. Derived from the

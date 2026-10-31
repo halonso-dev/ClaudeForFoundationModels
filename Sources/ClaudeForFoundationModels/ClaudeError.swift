@@ -6,6 +6,7 @@ import Foundation
 /// Errors surfaced by the Claude provider that don't map onto a
 /// ``LanguageModelError`` case. App developers can pattern-match on these to
 /// drive product flows (key entry).
+@available(iOS 27.0, macOS 27.0, *)
 public enum ClaudeError: LocalizedError, Sendable {
   /// No usable credential. Provide an API key via ``AuthMode/apiKey(_:)``,
   /// or, when using ``AuthMode/proxied(headers:)``, check that the proxy

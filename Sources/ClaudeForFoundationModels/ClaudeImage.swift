@@ -22,6 +22,7 @@ import CoreImage
 /// Source metadata (EXIF, GPS, IPTC, XMP — location, capture time, device
 /// identifiers) never reaches the wire: every path strips it, keeping only the
 /// orientation so a portrait capture still displays upright.
+@available(iOS 27.0, macOS 27.0, *)
 struct ClaudeImage: Sendable, Hashable {
   /// JPEG, PNG, GIF, or WebP bytes within ``maxByteCount`` and the dimension
   /// caps. Base64-encoded onto the wire.
@@ -276,6 +277,7 @@ struct ClaudeImage: Sendable, Hashable {
   }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension ClaudeImage {
   /// Wire content block. The bridge emits this once `Transcript.Segment` carries
   /// an image case — see ``RequestBuilder``.

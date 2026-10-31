@@ -11,6 +11,7 @@ import DeviceCheck
 
 /// Maps Messages API failures onto the framework's typed errors so app
 /// developers can pattern-match on well-known cases.
+@available(iOS 27.0, macOS 27.0, *)
 enum ErrorMapper {
   /// `usesAppAttest` disambiguates authentication failures: under App
   /// Attest a credential existed and the server rejected it, so "provide an

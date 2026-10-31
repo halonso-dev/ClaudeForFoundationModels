@@ -19,6 +19,7 @@ import Foundation
 /// executors. Hash on stable identifiers (the key itself), never on tokens that
 /// rotate.
 ///
+@available(iOS 27.0, macOS 27.0, *)
 public enum AuthMode: Hashable, Sendable {
   /// Developer-supplied API key. Bundled keys are extractable from a shipping
   /// app; for production, use ``proxied(headers:)``.

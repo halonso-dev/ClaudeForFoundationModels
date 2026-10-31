@@ -29,6 +29,7 @@ import FoundationModels
 /// requested model does. A fixed effort becomes the closest level the fallback
 /// accepts. The rest of the request, including the prompt, the tools, and any
 /// sampling settings, reaches the fallback unchanged.
+@available(iOS 27.0, macOS 27.0, *)
 public enum ClaudeFallbacks: Sendable, Hashable, ExpressibleByArrayLiteral {
   /// Up to three substitute models, tried in order. Each must be one the
   /// requested model allows as a fallback, and the API rejects any other.

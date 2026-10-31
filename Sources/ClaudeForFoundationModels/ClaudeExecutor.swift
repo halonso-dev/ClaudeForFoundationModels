@@ -10,6 +10,7 @@ import Synchronization
 ///
 /// One executor is created per unique ``Configuration`` and reused. Heavy
 /// resources (the HTTP client) live here, not on ``ClaudeLanguageModel``.
+@available(iOS 27.0, macOS 27.0, *)
 public struct ClaudeExecutor: LanguageModelExecutor {
   public typealias Model = ClaudeLanguageModel
 

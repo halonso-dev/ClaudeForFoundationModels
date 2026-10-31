@@ -23,6 +23,7 @@ import Synchronization
 /// `sign_count` check is strictly increasing, so parallel assertions from
 /// one key reject, and parallel registrations waste rate-limited Apple
 /// attestations.
+@available(iOS 27.0, macOS 27.0, *)
 actor AppAttestSession {
   /// One session per client ID, process-wide. A client ID names one Secure
   /// Enclave key, and every assertion for that key must flow through the
@@ -580,6 +581,7 @@ actor AppAttestSession {
   }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 enum AppAttestError: LocalizedError, Sendable, Equatable {
   enum Endpoint: String, Sendable {
     case challenge

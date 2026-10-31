@@ -5,6 +5,7 @@ import ClaudeAPI
 import Foundation
 import FoundationModels
 
+@available(iOS 27.0, macOS 27.0, *)
 extension ClaudeServerToolActivity {
   /// One activity per server-side tool call among `blocks`, in order, with
   /// the result block answering it (if it's among `blocks`) folded in. A
@@ -31,6 +32,7 @@ extension ClaudeServerToolActivity {
   }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension ClaudeServerToolActivity.Content {
   /// Typed reading of a call and, once it has arrived, its result. A tool
   /// this package doesn't model, or a payload that doesn't decode as the
@@ -102,6 +104,7 @@ extension ClaudeServerToolActivity.Content {
 
 /// Every server tool reports a failure the same way, as a
 /// `*_tool_result_error` object; anything else is the tool's own result shape.
+@available(iOS 27.0, macOS 27.0, *)
 private func decodeOutcome<Outcome, Wire: Decodable>(
   _ payload: JSONValue,
   failure: (String) -> Outcome,
@@ -113,6 +116,7 @@ private func decodeOutcome<Outcome, Wire: Decodable>(
   return (payload.decoded() as Wire?).map(success)
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension ClaudeServerToolActivity.WebSearch.Outcome {
   fileprivate init?(payload: JSONValue) {
     guard
@@ -137,6 +141,7 @@ extension ClaudeServerToolActivity.WebSearch.Outcome {
   }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension ClaudeServerToolActivity.WebFetch.Outcome {
   fileprivate init?(payload: JSONValue) {
     guard
@@ -160,6 +165,7 @@ extension ClaudeServerToolActivity.WebFetch.Outcome {
   }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension ClaudeServerToolActivity.CodeExecution.Outcome {
   fileprivate init?(payload: JSONValue) {
     guard
@@ -179,15 +185,18 @@ extension ClaudeServerToolActivity.CodeExecution.Outcome {
 
 // MARK: - Wire shapes
 
+@available(iOS 27.0, macOS 27.0, *)
 private struct WebSearchInput: Decodable {
   var query: String
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 private struct WebFetchInput: Decodable {
   var url: URL
 }
 
 /// `code_execution` sends `code`; `bash_code_execution` sends `command`.
+@available(iOS 27.0, macOS 27.0, *)
 private struct CodeExecutionInput: Decodable {
   var code: String
 
@@ -205,6 +214,7 @@ private struct CodeExecutionInput: Decodable {
 
 /// `{"type": "*_tool_result_error", "error_code": ...}` — the failure shape
 /// shared by every server tool's result block.
+@available(iOS 27.0, macOS 27.0, *)
 private struct WireError: Decodable {
   var errorCode: String
 
@@ -213,6 +223,7 @@ private struct WireError: Decodable {
   }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 private struct WebSearchHitWire: Decodable {
   var url: String
   var title: String?
@@ -224,6 +235,7 @@ private struct WebSearchHitWire: Decodable {
   }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 private struct WebFetchResultWire: Decodable {
   var url: URL?
   var retrievedAt: String?
@@ -250,6 +262,7 @@ private struct WebFetchResultWire: Decodable {
   }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 private struct CodeExecutionResultWire: Decodable {
   var stdout: String?
   var stderr: String?

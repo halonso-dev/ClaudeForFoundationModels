@@ -20,6 +20,7 @@ import FoundationModels
 ///   showNote("Finished by \(handover.toModelID)")
 /// }
 /// ```
+@available(iOS 27.0, macOS 27.0, *)
 public struct ClaudeModelHandover: Sendable, Equatable {
   /// The ID of the model that declined. Its output ends here.
   public let fromModelID: String
@@ -64,6 +65,7 @@ public struct ClaudeModelHandover: Sendable, Equatable {
   }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension Transcript.Response {
   /// The handover that `segment` holds the place of, or `nil` for an ordinary
   /// segment.

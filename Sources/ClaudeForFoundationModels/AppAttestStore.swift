@@ -8,6 +8,7 @@ import Security
 /// Both are device-bound: the key ID names a Secure Enclave key that doesn't
 /// migrate, and the token is derived from it. A conforming store must not
 /// sync or back up either value off-device.
+@available(iOS 27.0, macOS 27.0, *)
 protocol AppAttestStore: Sendable {
   func keyID(for clientID: String) throws -> String?
   func setKeyID(_ keyID: String, for clientID: String) throws
@@ -16,6 +17,7 @@ protocol AppAttestStore: Sendable {
   func deleteToken(for clientID: String) throws
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 struct StoredToken: Codable, Sendable, Equatable {
   let value: String
   let expiresAt: Date
@@ -25,6 +27,7 @@ struct StoredToken: Codable, Sendable, Equatable {
 /// `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, namespaced by a service
 /// string and keyed on `clientID#<slot>` so multiple registrations in one app
 /// don't collide.
+@available(iOS 27.0, macOS 27.0, *)
 struct KeychainAppAttestStore: AppAttestStore {
   static let defaultService = "com.anthropic.claude-foundation-models.app-attest"
 
@@ -145,6 +148,7 @@ struct KeychainAppAttestStore: AppAttestStore {
   }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 struct KeychainError: LocalizedError, Sendable {
   let status: OSStatus
 

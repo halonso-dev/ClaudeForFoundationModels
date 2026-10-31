@@ -14,6 +14,7 @@ import FoundationModels
 /// entries. A turn can span several responses when the API pauses it
 /// (`pause_turn`): feed each response's stream to the same translator, and
 /// ``content`` accumulates across them.
+@available(iOS 27.0, macOS 27.0, *)
 struct EventTranslator: Sendable {
   let responseEntryID: String
   let toolCallsEntryID: String
@@ -320,6 +321,7 @@ struct EventTranslator: Sendable {
   }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension EventTranslator.TurnUsage {
   /// `input_tokens` counts only the uncached prompt; cache reads and writes
   /// arrive in separate fields. The framework's total is the whole prompt,

@@ -20,6 +20,7 @@ import Foundation
 /// because availability and policy belong to the deployment, not the turn.
 ///
 /// `Hashable` so it folds into the framework's executor cache.
+@available(iOS 27.0, macOS 27.0, *)
 public enum ClaudeServerTool: Hashable, Sendable {
   /// Real-time web search.
   case webSearch(domains: DomainFilter = .unrestricted, maxUses: Int? = nil)
@@ -46,6 +47,7 @@ public enum ClaudeServerTool: Hashable, Sendable {
   }
 }
 
+@available(iOS 27.0, macOS 27.0, *)
 extension ClaudeServerTool {
   /// `nil` when the tool can't be sent: `.allowing([])` permits no domain at
   /// all, and the wire can't express an empty allowlist — failing closed by

@@ -76,23 +76,32 @@ package struct OutputConfig: Sendable, Hashable, Codable {
   }
 
   /// Constrained-decoding output format. The model strictly conforms to the
-  /// schema — it cannot emit a token that would violate it.
+  /// schema — it cannot emit a token that would violate it — and writes each
+  /// object's properties in the order the schema lists them, so the schema
+  /// is sent in its own member order (see ``OrderedJSON``).
   package struct Format: Sendable, Hashable, Codable {
-    package var schema: JSONValue
+    /// The schema as sent, members in order.
+    package var orderedSchema: OrderedJSON
 
-    package init(schema: JSONValue) { self.schema = schema }
+    /// The schema's content, member order aside.
+    package var schema: JSONValue { orderedSchema.unordered }
+
+    package init(orderedSchema: OrderedJSON) { self.orderedSchema = orderedSchema }
+
+    /// A schema whose member order doesn't matter: objects go out sorted.
+    package init(schema: JSONValue) { self.orderedSchema = OrderedJSON(schema) }
 
     private enum CodingKeys: String, CodingKey { case type, schema }
 
     package init(from decoder: Decoder) throws {
       let c = try decoder.container(keyedBy: CodingKeys.self)
-      schema = try c.decode(JSONValue.self, forKey: .schema)
+      orderedSchema = try c.decode(OrderedJSON.self, forKey: .schema)
     }
 
     package func encode(to encoder: Encoder) throws {
       var c = encoder.container(keyedBy: CodingKeys.self)
       try c.encode("json_schema", forKey: .type)
-      try c.encode(schema, forKey: .schema)
+      try c.encode(orderedSchema, forKey: .schema)
     }
   }
 

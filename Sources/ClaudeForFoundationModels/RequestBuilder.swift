@@ -261,7 +261,73 @@ enum RequestBuilder {
     guard let value = JSONValue.encoded(schema) else {
       return .object(["type": "object"])
     }
-    return sanitize(value)
+    return sanitized(value, optionalsAsNullable: false).unordered
+  }
+
+  /// The schema `output_config.format` sends: sanitized as in
+  /// ``jsonSchema(from:)``, with each object's `properties` in declaration
+  /// order (the framework's `x-order`), because constrained decoding writes
+  /// properties in the order the schema lists them.
+  ///
+  /// Constrained decoding also writes required properties before optional
+  /// ones, and an optional property can't be `null`, only absent. So while the request's
+  /// union-type budget allows (``unionParameterLimit``), optional properties
+  /// go out required and nullable (`anyOf: [T, {"type": "null"}]`), and the
+  /// framework decodes `null` as `nil`. Then the answer's order is the
+  /// declaration order. Past the budget they stay optional, which the API
+  /// accepts up to its separate limit of 24, and come last.
+  static func outputSchema(from schema: GenerationSchema) -> OrderedJSON {
+    guard let value = JSONValue.encoded(schema) else {
+      return .object([.init("type", .string("object"))])
+    }
+    let nullable = unionParameterCount(in: value) <= unionParameterLimit
+    return sanitized(value, optionalsAsNullable: nullable)
+  }
+
+  /// The API's limit on parameters that use a union type (`anyOf`, or a type
+  /// array) across the strict schemas of one request. Past it, the request
+  /// fails with a 400.
+  static let unionParameterLimit = 16
+
+  /// How many parameters of `schema` would use a union type with its
+  /// optional properties sent as nullable: the ones that already do, plus
+  /// every optional property. A `$ref` counts its definition again wherever
+  /// it's used, so the count errs high; a definition that refers back to
+  /// itself counts once.
+  static func unionParameterCount(in schema: JSONValue) -> Int {
+    func definition(_ ref: String) -> (id: String, schema: JSONValue)? {
+      for container in ["$defs", "definitions"] where ref.hasPrefix("#/\(container)/") {
+        let name = String(ref.dropFirst(container.count + 3))
+        if let target = schema[container]?[name] { return ("\(container)/\(name)", target) }
+      }
+      return nil
+    }
+    func count(_ node: JSONValue, visiting: Set<String>) -> Int {
+      switch node {
+      case .array(let items):
+        return items.reduce(0) { $0 + count($1, visiting: visiting) }
+      case .object(let fields):
+        var total = 0
+        if case .string(let ref)? = fields["$ref"], let target = definition(ref),
+          !visiting.contains(target.id)
+        {
+          total += count(target.schema, visiting: visiting.union([target.id]))
+        }
+        if fields["anyOf"] != nil || fields["oneOf"] != nil { total += 1 }
+        if case .array? = fields["type"] { total += 1 }
+        if case .object(let properties)? = fields["properties"] {
+          total += optionalProperties(of: fields).count
+          total += properties.values.reduce(0) { $0 + count($1, visiting: visiting) }
+        }
+        for key in ["items", "anyOf", "oneOf", "allOf", "additionalProperties"] {
+          if let nested = fields[key] { total += count(nested, visiting: visiting) }
+        }
+        return total
+      default:
+        return 0
+      }
+    }
+    return count(schema, visiting: [])
   }
 
   /// Keys the API's strict schema validator accepts. Everything else is
@@ -276,27 +342,93 @@ enum RequestBuilder {
   /// and must be preserved; only the nested schemas are sanitized.
   private static let mapValuedKeys: Set<String> = ["properties", "$defs", "definitions"]
 
-  private static func sanitize(_ value: JSONValue) -> JSONValue {
+  /// `value` with only the keys the API accepts, `properties` in declaration
+  /// order and every other object's keys sorted. With `optionalsAsNullable`,
+  /// each optional property goes out required and nullable.
+  private static func sanitized(_ value: JSONValue, optionalsAsNullable: Bool) -> OrderedJSON {
     switch value {
     case .object(let dict):
-      var out: [String: JSONValue] = [:]
+      let optional = optionalsAsNullable ? optionalProperties(of: dict) : []
+      var out: [String: OrderedJSON] = [:]
       for (key, v) in dict where allowedSchemaKeys.contains(key) {
-        if mapValuedKeys.contains(key), case .object(let nested) = v {
-          out[key] = .object(nested.mapValues(sanitize))
-        } else {
-          out[key] = sanitize(v)
+        switch (key, v) {
+        case ("properties", .object(let properties)):
+          out[key] = .object(
+            propertyOrder(of: dict, properties)
+              .map { name in
+                let schema = sanitized(properties[name]!, optionalsAsNullable: optionalsAsNullable)
+                return .init(name, optional.contains(name) ? nullable(schema) : schema)
+              }
+          )
+        case (_, .object(let nested)) where mapValuedKeys.contains(key):
+          out[key] = .object(
+            nested.keys.sorted()
+              .map {
+                .init($0, sanitized(nested[$0]!, optionalsAsNullable: optionalsAsNullable))
+              }
+          )
+        default:
+          out[key] = sanitized(v, optionalsAsNullable: optionalsAsNullable)
         }
+      }
+      if !optional.isEmpty, case .object(let properties)? = dict["properties"] {
+        out["required"] = .array(propertyOrder(of: dict, properties).map(OrderedJSON.string))
       }
       // The API requires `additionalProperties: false` on every object.
       if out["type"] == .string("object"), out["additionalProperties"] == nil {
         out["additionalProperties"] = .bool(false)
       }
-      return .object(out)
+      return .object(out.keys.sorted().map { .init($0, out[$0]!) })
     case .array(let arr):
-      return .array(arr.map(sanitize))
+      return .array(arr.map { sanitized($0, optionalsAsNullable: optionalsAsNullable) })
     default:
-      return value
+      return OrderedJSON(value)
     }
+  }
+
+  /// The names in an object schema's `properties` that its `required` leaves
+  /// out.
+  private static func optionalProperties(of schema: [String: JSONValue]) -> Set<String> {
+    guard case .object(let properties)? = schema["properties"] else { return [] }
+    var required: Set<String> = []
+    if case .array(let names)? = schema["required"] {
+      for case .string(let name) in names { required.insert(name) }
+    }
+    return Set(properties.keys).subtracting(required)
+  }
+
+  /// The names in `properties` in declaration order: the framework's
+  /// `x-order`, then any it doesn't list, sorted.
+  private static func propertyOrder(
+    of schema: [String: JSONValue],
+    _ properties: [String: JSONValue]
+  ) -> [String] {
+    var declared: [String] = []
+    if case .array(let order)? = schema["x-order"] {
+      for case .string(let name) in order where properties[name] != nil && !declared.contains(name)
+      {
+        declared.append(name)
+      }
+    }
+    return declared + properties.keys.filter { !declared.contains($0) }.sorted()
+  }
+
+  /// `schema`, or `null`. A description moves to the wrapper, where it still
+  /// reads as the property's.
+  private static func nullable(_ schema: OrderedJSON) -> OrderedJSON {
+    var inner = schema
+    var description: OrderedJSON?
+    if case .object(var members) = schema,
+      let index = members.firstIndex(where: { $0.key == "description" })
+    {
+      description = members.remove(at: index).value
+      inner = .object(members)
+    }
+    var wrapper: [OrderedJSON.Member] = [
+      .init("anyOf", .array([inner, .object([.init("type", .string("null"))])]))
+    ]
+    if let description { wrapper.append(.init("description", description)) }
+    return .object(wrapper)
   }
 
   // MARK: - Assistant turns
@@ -647,12 +779,13 @@ enum RequestBuilder {
   /// across a session's requests: the API can reject a replayed thinking
   /// block once the conversation before it has changed, and the system prompt
   /// is part of that conversation. `includeSchemaInPrompt` is moot for the
-  /// same reason: the schema always reaches the model.
+  /// same reason: the schema always reaches the model. Its shape on the wire
+  /// is ``outputSchema(from:)``'s.
   private static func applyStructuredOutput(
     _ schema: GenerationSchema,
     to req: inout MessagesRequest
   ) {
-    let format = OutputConfig.Format(schema: jsonSchema(from: schema))
+    let format = OutputConfig.Format(orderedSchema: outputSchema(from: schema))
     req.outputConfig = OutputConfig(format: format, effort: req.outputConfig?.effort)
   }
 }

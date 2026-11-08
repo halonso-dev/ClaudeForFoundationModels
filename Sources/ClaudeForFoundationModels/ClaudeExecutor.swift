@@ -147,7 +147,16 @@ public struct ClaudeExecutor: LanguageModelExecutor {
           into: channel
         )
         let content = translator.continuationContent
-        guard stopReason == .pauseTurn, content.count > sentCount else { return }
+        guard stopReason == .pauseTurn, content.count > sentCount else {
+          if built.isStructured {
+            try Self.checkStructuredStop(
+              stopReason,
+              maxTokens: built.request.maxTokens,
+              outputTokens: translator.outputTokenCount
+            )
+          }
+          return
+        }
         try Task.checkCancellation()
         sentCount = content.count
         request = built.request
@@ -155,6 +164,48 @@ public struct ClaudeExecutor: LanguageModelExecutor {
       }
     } catch {
       throw ErrorMapper.map(error, usesAppAttest: attestSession != nil)
+    }
+  }
+
+  /// Fails a structured response that didn't end whole. The framework
+  /// decodes a cut-off answer as complete values that hold the cut-off text,
+  /// so it can't be left to decoding:
+  /// - `max_tokens`: the JSON stops where the budget ran out. Thrown as
+  ///   `contextSizeExceeded`, the framework's error for a response that ran
+  ///   out of room, with `max_tokens` as the size and the output tokens as the
+  ///   count. This holds even when the caller set `maximumResponseTokens`:
+  ///   for plain text the framework accepts a shortened answer, but a
+  ///   shortened structured answer is a wrong one.
+  /// - `refusal`: the refusal takes precedence over the schema, so the
+  ///   content may not match it.
+  ///
+  /// A plain-text response keeps what it streamed in both cases. Descriptions
+  /// carry no response text, since callers may log them.
+  static func checkStructuredStop(
+    _ stopReason: StopReason?,
+    maxTokens: Int,
+    outputTokens: Int
+  ) throws {
+    switch stopReason {
+    case .maxTokens:
+      throw LanguageModelError.contextSizeExceeded(
+        .init(
+          contextSize: maxTokens,
+          tokenCount: outputTokens,
+          debugDescription:
+            "The structured response reached max_tokens (\(maxTokens)) before it was complete."
+        )
+      )
+    case .refusal:
+      throw LanguageModelError.refusal(
+        .init(
+          explanation: "Claude declined to answer this request.",
+          debugDescription:
+            "The structured response ended with stop_reason refusal; it may not match the schema."
+        )
+      )
+    default:
+      return
     }
   }
 

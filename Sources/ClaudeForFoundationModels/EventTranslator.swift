@@ -46,6 +46,9 @@ struct EventTranslator: Sendable {
     }
   }
 
+  /// Output tokens of the responses read to the end so far.
+  var outputTokenCount: Int { settledUsage.output }
+
   init(
     responseEntryID: String = UUID().uuidString,
     toolCallsEntryID: String = UUID().uuidString

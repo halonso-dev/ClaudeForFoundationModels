@@ -116,9 +116,14 @@ package struct ClaudeClient: Sendable {
     for (key, value) in headers {
       req.setValue(value, forHTTPHeaderField: key)
     }
+    // Sorted keys keep the bytes stable for the prompt cache. The one value
+    // whose member order matters, a structured-output schema (`OrderedJSON`),
+    // is written on its own and spliced in.
+    let fragments = RawJSONFragments()
     let encoder = JSONEncoder()
     encoder.outputFormatting = .sortedKeys
-    req.httpBody = try encoder.encode(body)
+    encoder.userInfo[RawJSONFragments.userInfoKey] = fragments
+    req.httpBody = try fragments.splice(into: encoder.encode(body), using: encoder)
     return req
   }
 
